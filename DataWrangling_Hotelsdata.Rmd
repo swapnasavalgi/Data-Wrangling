@@ -1,0 +1,102 @@
+---
+title: "Data Wrangling"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r}
+hotel <- read.csv('C:\\Users\\Swapna\\Desktop\\Rstudio\\hotels.csv')
+```
+
+```{r}
+library(dplyr)
+
+```
+```{r}
+glimpse(hotel)
+```
+
+```{r}
+select(hotel,hotel,lead_time,customer_type)
+
+```
+
+```{r}
+
+select_arrivals = select(hotel, starts_with("arrivals"))
+
+```
+
+
+arrange the columns and arrange lead_time in descending order
+
+```{r}
+arrange(select(hotel,hotel,lead_time,customer_type),desc(lead_time))
+
+```
+
+```{r}
+#alternate method:
+
+hotel%>%
+  select(hotel,lead_time,customer_type)%>%arrange(desc(lead_time))
+```
+
+exclude the variables
+```{r}
+
+hotel %>%
+  select(-customer_type)
+```
+
+show hotel to arrival_date_year data.
+```{r}
+
+hotel%>%select(hotel:arrival_date_year)
+
+
+```
+
+Slice the rows and column
+```{r}
+hotel%>%
+  slice(1:5,1:5)
+
+```
+slice for certain row numbers:
+```{r}
+last_row <- nrow(hotel)
+hotel%>%slice((last_row - 4):last_row)
+```
+
+Filter to select a subset of rows
+
+```{r}
+hotel%>%
+  filter(hotel=="City Hotel")
+```
+
+Filter rows with more conditions:
+
+```{r}
+
+hotel%>%
+  filter(adults==0,children>=1)%>%select(adults,children,hotel)
+
+
+```
+
+
+
+```{r}
+
+glimpse(hotel)
+
+```
+
+
