@@ -1,0 +1,119 @@
+---
+title: "Data Handling"
+output: html_notebook
+Author : Swapna
+---
+
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+flight_data = read.csv("C:\\Users\\Swapna\\Desktop\\Rstudio\\Review\\nycflights.csv")
+```
+
+Take a quick peek at your data to understand its contents better.
+
+
+```{r}
+glimpse(flight_data)
+```
+# Departure delays
+
+Examine the distribution of departure delays of all flights with a histogram.
+
+```{r}
+delay = flight_data$dep_delay
+hist(delay)
+```
+Visualize only on delays of flights headed to Los Angeles, you need to first filter the data for flights with that destination (dest == "LAX") and then make a histogram of the departure delays of only those flights.
+
+```{r}
+flight_data%>%
+  filter(dest == "LAX")%>%
+  group_by("Los Angeles")%>%
+  select(dest,dep_delay)
+```
+
+
+```{r}
+library(ggplot2)
+
+```
+
+
+```{r}
+ggplot(flight_data, aes(x = dep_delay , color = "LAX"))+geom_histogram()
+```
+summarise delays by showing the mean delay duration (mean_dd), median delay duration (median_dd), and number of delayed flights (n)
+
+```{r}
+glimpse(flight_data)
+```
+
+
+```{r}
+flight_data%>%
+  summarize(mean_dd = mean(dep_time), median_dd = median(dep_time), n = n())
+```
+
+Create a new data frame that includes flights headed to SFO in February, and save this data frame as sfo_feb_flights. How many flights meet these criteria?
+
+```{r}
+sfo_feb_flights = flight_data%>%
+  filter(dest == "SFO", month == 2)
+```
+
+```{r}
+sfo_feb_flights
+```
+
+Calculate the median and interquartile range for arr_delays of flights in in the sfo_feb_flights data frame, grouped by carrier. Which carrier has the most variable arrival delays?
+```{r}
+sfo_feb_flights%>%group_by(carrier)%>%summarise(median_arr=median(arr_delay), iqr=IQR(arr_delay))
+
+```
+
+Suppose you really dislike departure delays and you want to schedule your travel in a month that minimizes your potential departure delay leaving NYC. Calculate monthly averages for departure delays, then arrange these average dealys in descending order
+
+```{r}
+flight_data%>%group_by(month)%>%summarise(mean_dep_delay = mean(dep_delay))%>%arrange(desc(mean_dep_delay))
+```
+
+Mutate the data frame so that it includes a new variable that contains the average speed, avg_speed traveled by the plane for each flight (in mph). Hint: Average speed can be calculated as distance divided by number of hours of travel, and note that air_time is given in minutes.
+Make a scatterplot of avg_speed vs. distance. Describe the relationship between average speed and distance. Hint: Use geom_point().
+
+
+```{r}
+flight_data%>%mutate(avg_speed = distance / air_time/60)%>%select(avg_speed,flight)
+ggplot(flight_data, aes(x = distance , y = distance/air_time/60)) + geom_point()
+
+
+```
+
+
+```{r}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
