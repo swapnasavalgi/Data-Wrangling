@@ -1,0 +1,264 @@
+---
+title: "IS680 Group 5: Analysis between Happiness and select factors for countries around the world"
+output: html_document
+---
+Introduction
+
+Our project is aimed at establishing whether there is a correlation between happiness and some selected factors. The factor we selected are Population density, annual average temperatures, suicide rates and employment. For each of these factors we had an assumption as to how they correlate with happiness and our aim was to establish whether our assumptions were true or false. 
+
+Data
+
+Our data was obtained from different sources. We used United Nations data for happiness index and GDP ranking per country. Population data was obtained from Kaggle and Suicide rates data was obtained from World Health Organization. Average annual temperature data was obtained from Stapedia and employment rates were obtained from gapminder datasets. Employment rate is the percentage of total population , aged 15 and above that has been employeed during the given year(2017). Suicide rate is given as number of suicides per 100,000 people. The Population Density is calculated base on the per square kilometer area.
+
+As part of data cleaning, we manually went through each of the datasets that we wanted to merge and made sure that the country names are written the same way for all. This is because we are merging the datasets by Country name and a small misspelling would result to non match even though the country is the same. Some of the corrections we made include
+  1. Changing "and" to "&" for countries with two names
+  2. Some datasets listed "United States" while others listed "United States of America"
+  3. Changing replacing "Côte d'Ivoire" with "Ivory Coast" among other changes
+
+Importing required libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+#install.packages('corrplot')
+library(corrplot)
+#install.packages("lattice")
+library("lattice")
+#install.packages("ggpubr")
+library(ggpubr)
+```
+
+Reading the main dataset which is the happiness score for every country. We have 156 countries with scores and these are the ones we are going to explore. 
+
+```{r}
+happiness=read_csv('happiness_index.csv')
+```
+Reading and merging the population density dataset with the happiness dataset. We specified all.x = TRUE in the merge function so that all rows in the happiness dataset are returned with all matching rows in the other datasets. This is because we cannot explore any country that has no happiness index since it is our dependent variable and we do not want to lose any row with a happiness index just incase there is a match in any of the other datasets. If a row has no value in the incoming dataset (y), then NAs are assigned to that row. Since the Column "country" is in all datasets, we do not need to use the "by" parameter of the merge function.
+
+```{r}
+population_density=read_csv('population_density.csv')
+ds= merge(happiness,population_density, all.x = TRUE)
+```
+
+We do the procedure of reading and merging the suicide_rate dataset to the resulting dataset after merging happiness with population density
+
+```{r}
+suicide_rate=read_csv('suicide_rate.csv')
+ds= merge(ds,suicide_rate, all.x = TRUE)
+
+```
+We also read and merge the employment rate dataset the same way
+
+```{r}
+employment_rate=read_csv('employment_rate.csv')
+ds= merge(ds,employment_rate, all.x = TRUE)
+```
+Similary we do the same for GDP per capital. The reason for incorporating this dataset is so that we are able to compare countries in there own group for variables that we think may be influenced by financial standing of the countries
+```{r}
+gdp=read_csv('gdp_per_capita.csv')
+ds= merge(ds,gdp, all.x = TRUE)
+```
+Finally we read and merge the last dataset of average temperature into our dataset
+
+```{r}
+ave_temperature=read_csv('ave_temperature.csv')
+ds= merge(ds,ave_temperature, all.x = TRUE)
+head(ds)
+```
+A summary of the dataframe is as shown below. We looking at 156 countries. Happiness index ranges from 2.853 for South Sudan to 7.769 for Finland and the average is 5.407. The coldest country in our dataset is Canada with -5.35 degree celcius and the hottest in our dataset is Burkina Faso with 28.29 degree celcius. Most countries have low suicide rates but we have outliers with the highest **** 
+
+```{r}
+summary(ds)
+```
+
+## Question 1: Is employment_rate affecting the increase in score of happiness_index for the countries? Currently, countries have happiness_index of 7 , has the employment rate of 0.5 .
+
+
+```{r}
+emp_happiness_index = as.data.frame(ds)
+ehi = emp_happiness_index%>%
+select(Country,happiness_index,employment)
+ehi
+```
+
+Listing rows with NA values
+```{r}
+ehi[is.na(ehi$employment),] #employment has NA values.
+```
+
+```{r}
+ehi = ehi%>%drop_na()
+
+#dropped NA values
+ehi
+```
+
+What are the distributions of each variable like ?
+
+```{r}
+ehi%>%
+  summarise(mean_emp_rate = mean(ehi$employment),median_emp_rate = median(ehi$employment),sd_emp_rate = sd(ehi$employment))
+
+```
+
+```{r}
+ehi%>%
+  summarise(min_emp_rate = min(ehi$employment),max_emp_rate = max(ehi$employment))
+```
+
+
+```{r}
+ehi%>%
+  summarise(mean_happiness_index = mean(ehi$happiness_index),median_emp_rate = median(ehi$happiness_index),sd_emp_rate = sd(ehi$happiness_index))
+```
+
+
+```{r}
+skewness_happiness_index = 3* (mean(ehi$happiness_index)-median(ehi$happiness_index))/sd(ehi$happiness_index)
+
+skewness_happiness_index
+
+skewness_employment_rate = 3 *
+  (mean(ehi$employment- median(ehi$employment))/sd(ehi$employment))
+
+skewness_employment_rate
+```
+
+
+In the world happiness report,The mean and median are nearly same.But not for employment rate data, it is skewed left.
+
+```{r}
+ehi%>%
+  summarise(min_happiness_index = min(ehi$happiness_index),max_emp_rate = max(ehi$happiness_index))
+
+```
+
+What is the change in employment rate? 
+```{r}
+var(ehi$employment)
+var(ehi$happiness_index)
+
+```
+
+```{r}
+ggplot(ehi, aes(x=happiness_index, y=employment, color=Country)) +
+geom_point()+ theme(legend.position="none") + labs(title = "Happiness Index vs Employment Rate")
+```
+
+Interpretation:
+Through this plot, we can say when the happiness_index is not 7 (highest score) , employment rate still has reached to 0.7 above the average rate in 2017. Thus, there is no association between happiness_index and employment.It shows no trend. 
+
+
+## Question 2 : Is there a relationship between suicide and happiness
+
+```{r}
+ds %>% select(Country,happiness_index,suicide_rate)
+```
+Data Handling:
+We see that our data has only 6 of missing/NA values. We also observe that missing records are completely random and thus it is safe to remove the data with missing values instead of imputing.
+
+```{r}
+ds1<- subset(ds,!is.na(suicide_rate))
+ds1
+```
+
+```{r}
+ggplot(data= ds1, mapping=aes(y= ds1$suicide_rate, x=ds1$happiness_index))+geom_point()
+```
+
+```{r}
+ggplot(data=ds1,aes(x=ds1$suicide_rate))+geom_histogram()
+```
+From above the histogram, we see that the values having suicide factor greater than 25 could be possible outliers.
+```{r}
+ggplot(data= ds1, mapping=aes(y= suicide_rate, x= happiness_index))+ geom_boxplot(outlier.colour = "red", outlier.shape = 1)
+```
+Outliers in suicide rate:
+In the Boxplot, we see the 4 red dots are greater than 1.5 IQR. From the boxplot along with the histogram, we can definitely conclude the four points as outliers.
+```{r}
+outliers <- ds1 %>% filter(suicide_rate>25)
+outliers
+```
+Correlation between happiness and suicide rate.
+```{r}
+happiness  <- ds1$happiness_index
+suicide <- ds1$suicide_rate
+sp<- plot(happiness, suicide, pch = 19, col = "lightblue")
+abline(lm(suicide ~ happiness), col = "red", lwd = 3)
+cor.test(ds1$happiness_index, ds1$suicide_rate, method="pearson")
+```
+By looking at the correlation value, we can say that we are not able to define a relation for our hypothesis.
+
+## Question 3. Does the area with High Population density has any  effects on the Happiness Score?
+
+A new variable is created in order to check if there is any missing value in the columns that are in the play.
+```{r}
+popln = emp_happiness_index%>%
+select(Country,happiness_index,pop_density_km_sqrd)
+popln
+```
+Here we found that there are 2 NA values in the Pop_density_km_sqrd column. To remove the missing values f, we will be using dropna() instead of replacing the missing values with any other values. This will give us accurate visualization for our analysis
+```{r}
+popln<- popln%>%drop_na()
+popln
+```
+
+Now that the data is clean, we will use scatter plot to visualize the our data.
+
+```{r}
+ggplot(ds, aes(x=happiness_index, y=pop_density_km_sqrd, color=Country)) +
+  geom_point()+theme(legend.position="none")
+```
+
+Findings:
+The graph shows that irrespective of the population density (high and low), there is no notable change in the happiness index and thus there is no trend and any sort of relation between the two factors. 
+
+
+
+
+## Question 4: Does weather, represented by annual average temperature, for each country has an influence on happiness?
+
+Our assumption is people in warmer countries are likely to be happier. We remove NA values because replacing them with mean values can significantly alter the analysis.
+
+To answer this question, we first plot a graph of happiness vs average temperatures
+
+
+```{r}
+ggplot(subset(ds,!is.na(ave_temp_celcius))) + geom_smooth(aes(x = ave_temp_celcius, y = happiness_index )) + labs(title = "Happiness Index vs Average Temp")
+
+```
+
+From the graph, there appears to be an inverse relationship between average temperature and and happiness index even though not very strong. This makes our assumption false
+
+To control for the effect GDP per capita has on the happiness index, we further grouped the country into GDP groups to compare countries with similar GDPs. We find that the relation ship between happiness and temperature is significant for high GDP countries as shown in the graphs below
+
+```{r}
+
+plot50_60 <- ggplot(ds[ds$GDP_Group=="$50,000–$60,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$50,000–$60,000")
+plotAbove60 <- ggplot(ds[ds$GDP_Group=="Above $60,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "Above $60,000")
+plot40_50 <- ggplot(ds[ds$GDP_Group=="$40,000–$50,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$40,000–$50,000")
+plot30_40 <- ggplot(ds[ds$GDP_Group=="$30,000–$40,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$30,000–$40,000")
+plot20_30 <- ggplot(ds[ds$GDP_Group=="$20,000–$30,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$20,000–$30,000")
+plot10_20 <- ggplot(ds[ds$GDP_Group=="$10,000–$20,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$10,000–$20,000")
+plot5_10 <- ggplot(ds[ds$GDP_Group=="$5,000–$10,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$5,000–$10,000")
+plot2.5_5 <- ggplot(ds[ds$GDP_Group=="$2,500–$5,000",]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "$2,500–$5,000")
+plot0_2.5 <- ggplot(ds[ds$GDP_Group=="$1,000–$2,500" | ds$GDP_Group=="Below $1,000" ,]) + geom_line(aes(x = ave_temp_celcius, y = happiness_index)) + labs(title = "Upto 2,500")
+
+
+
+ggarrange(plotAbove60, plot50_60, plot40_50, plot30_40,plot20_30, plot10_20,plot5_10, plot2.5_5,plot0_2.5 + rremove("x.text"), 
+        
+          ncol = 3, nrow = 3)
+```
+We can make a correlation matrix to have a glimpse of our analysis
+```{r}
+Corr_matrix <- corrplot.mixed(corr = cor(ds[,c("happiness_index","pop_density_km_sqrd","suicide_rate","employment","GDP_Per_capita","ave_temp_celcius")], use="pairwise.complete.obs"))
+```
+
+From above we an inte*****
+```{r}
+ggplot(ds1) + geom_smooth(aes(x = suicide_rate, y = ave_temp_celcius)) + labs(title = "Suicidal Rate vs Average Temp")
+
+```
+```
+
+
